@@ -13,8 +13,9 @@ const { AdminModel, CoursesModel } = require("../public/db");
 
 // bcrypt for password hashing and salting
 const bcrypt = require("bcrypt");
+const { adminMiddleware } = require("../middleware/admin"); // destructure before requiring the middleware
 
-const adminMiddleware = require("../middleware/admin");
+// admin can signup here
 
 adminRouter.post("/signup", async (req, res) => {
   const requiredBody = z.object({
@@ -41,6 +42,9 @@ adminRouter.post("/signup", async (req, res) => {
       username: username,
       password: hashedPassword,
     });
+    res.json({
+      message: "Signup Successfull",
+    });
   } catch (error) {
     res.status(403).send({
       message: "Unable to create the Admin. Admin already exists",
@@ -55,17 +59,15 @@ adminRouter.post("/login", async (req, res) => {
 
   const admin = await AdminModel.findOne({
     email: email,
-    password: password,
   });
 
-  const hashedPassword = await bcrypt.compare(password, admin.password);
-
-  if (!admin && !hashedPassword) {
+  if (!admin) {
     res.json({
       message: "Admin email and password is incorrect.",
     });
     return;
   }
+  const hashedPassword = await bcrypt.compare(password, admin.password);
 
   if (hashedPassword) {
     const token = jwt.sign(
@@ -85,6 +87,8 @@ adminRouter.post("/login", async (req, res) => {
   }
 });
 
+// admin can create courses here
+
 adminRouter.post("/course", adminMiddleware, async (req, res) => {
   const adminId = req.id;
 
@@ -103,51 +107,55 @@ adminRouter.post("/course", adminMiddleware, async (req, res) => {
   });
 });
 
-// adminRouter.put("/courses", adminMiddleware, async (req, res) => {
-//   const adminId = req.id;
+// admin can update courses here
 
-//   const { title, description, price, courseId } = req.body;
+adminRouter.put("/courses", adminMiddleware, async (req, res) => {
+  const adminId = req.id;
 
-//   const user = await AdminModel.findOne({
-//     adminId,
-//   });
+  const { title, description, price, courseId } = req.body;
 
-//   if (!user) {
-//     res.status(401).send({
-//       message: `Unable to fetch the courses of admin id: ${adminId} `,
-//     });
-//   }
+  const user = await AdminModel.findOne({
+    adminId,
+  });
 
-//   const course = await CoursesModel.updateOne(
-//     {
-//       _id: courseId,
-//       creatorId: adminId,
-//     },
-//     {
-//       title: title,
-//       description: description,
-//       price: price,
-//     }
-//   );
+  if (!user) {
+    res.status(401).send({
+      message: `Unable to fetch the courses of admin id: ${adminId} `,
+    });
+  }
 
-//   res.json({
-//     message: "Course has been updated",
-//     course: course,
-//   });
-// });
+  const course = await CoursesModel.updateOne(
+    {
+      _id: courseId,
+      creatorId: adminId,
+    },
+    {
+      title: title,
+      description: description,
+      price: price,
+    }
+  );
 
-// adminRouter.get("/bulk/courses", adminMiddleware, async (req, res) => {
-//   const adminId = req.id;
+  res.json({
+    message: "Course has been updated",
+    course: course,
+  });
+});
 
-//   const courses = await CoursesModel.find({
-//     creatorId: adminId,
-//   });
+// admin can get all the courses that were created by the admin
 
-//   res.json({
-//     message: "Courses fetched successful",
-//     courses: courses,
-//   });
-// });
+adminRouter.get("/bulk/courses", adminMiddleware, async (req, res) => {
+  const adminId = req.id;
+
+  const courses = await CoursesModel.find({
+    creatorId: adminId,
+  });
+
+  res.json({
+    message: "Courses fetched successful",
+    courses,
+  });
+});
 
 module.exports = {
   adminRouter,

@@ -9,10 +9,13 @@ const { JWT_USER_PASSWORD } = require("../config");
 const z = require("zod");
 
 // requireing the database
-const { UserModel } = require("../public/db");
+const { UserModel, PurchaseModel, CoursesModel } = require("../public/db");
 
 // bcrypt for password hashing and salting
 const bcrypt = require("bcrypt");
+const { userMiddleware } = require("../middleware/user");
+
+// user can signup here
 
 userRouter.post("/signup", async (req, res) => {
   // first we will need to check the input the user is providing, that is valid or not using zod
@@ -62,6 +65,8 @@ userRouter.post("/signup", async (req, res) => {
   });
 });
 
+// user can login to the account
+
 userRouter.post("/login", async (req, res) => {
   // before login in check the users email and password
 
@@ -71,7 +76,6 @@ userRouter.post("/login", async (req, res) => {
 
   const user = await UserModel.findOne({
     email: email,
-    password: password,
   });
 
   // compare the password and check if the password matches with the user
@@ -97,6 +101,32 @@ userRouter.post("/login", async (req, res) => {
       token: token,
     });
   }
+});
+
+userRouter.get("/purchase", userMiddleware, async (req, res) => {
+  const userId = req.id;
+
+  const userPurcahse = await PurchaseModel.find({
+    userId,
+  });
+
+  if (!userPurcahse) {
+    return res.json({
+      message: "User has not purchased courses please purcahse courses",
+    });
+  }
+
+  //  find the courses from the CoursesModel with the _id
+  const purchasedCourses = await CoursesModel.find({
+    _id: {
+      $in: userPurcahse.map((x) => x.courseId),
+    },
+  });
+
+  res.json({
+    userPurcahse,
+    purchasedCourses,
+  });
 });
 
 module.exports = {

@@ -22,8 +22,8 @@ const Courses = new Schema({
 });
 
 const Purchase = new Schema({
-  userid: ObjectId,
-  amount: Number,
+  userId: ObjectId,
+  courseId: ObjectId,
   ref: {},
 });
 
